@@ -1,0 +1,64 @@
+name: Daily Open-Source Spotlight Agent
+
+on:
+  schedule:
+    # Runs everyday at 09:00 AM IST (03:30 AM UTC)
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: 'Force execution even if manual dispatch'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: write
+
+jobs:
+  spotlight:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Execute Daily Spotlight Pipeline
+        env:
+          EURI_API_KEY: ${{ secrets.EURI_API_KEY }}
+          EURI_BASE_URL: ${{ secrets.EURI_BASE_URL || 'https://api.euron.one/api/v1/euri' }}
+          EURI_MODEL: ${{ secrets.EURI_MODEL || 'gpt-4.1-mini' }}
+          EURI_MAX_TOKENS: ${{ secrets.EURI_MAX_TOKENS || '1500' }}
+          EURI_TEMPERATURE: ${{ secrets.EURI_TEMPERATURE || '0.55' }}
+          GITHUB_TOKEN: ${{ secrets.GH_PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
+          DATABASE_PATH: data/history.db
+        run: |
+          python main.py run
+
+      - name: Commit and Push Updated SQLite State
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/history.db
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(data): persist spotlight state for $(date +'%Y-%m-%d') [skip ci]"
+            git push
+          else
+            echo "No database changes to commit."
+          fi
