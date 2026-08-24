@@ -4,7 +4,7 @@ import logging
 from typing import Any, Dict, List, Optional, TypedDict
 from langgraph.graph import StateGraph, END
 
-from src.config import Settings, get_settings
+from src.config import Settings, get_settings, setup_langsmith_tracing
 from src.db import Database
 from src.github_client import GitHubClient
 from src.llm_generator import LLMPostGenerator
@@ -28,16 +28,34 @@ class AgentState(TypedDict):
 
 
 class SpotlightWorkflow:
-    """Orchestrates the LangGraph agent workflow."""
+    """Orchestrates the LangGraph agent workflow with LangSmith real-time tracing."""
 
     def __init__(self, settings: Optional[Settings] = None) -> None:
         self.settings = settings or get_settings()
+        setup_langsmith_tracing(self.settings)
+
         self.db = Database(self.settings.DATABASE_PATH)
         self.github = GitHubClient(self.settings.GITHUB_TOKEN, self.settings.MIN_GITHUB_STARS)
         self.llm = LLMPostGenerator(self.settings)
         self.telegram = TelegramHITLBot(self.settings)
         self.linkedin = LinkedInClient(self.settings)
         self.graph = self._build_graph()
+
+    def get_execution_config(self, run_name: str = "spotlight_daily_pipeline", extra_tags: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Return RunnableConfig dictionary with metadata and tags for LangSmith tracing."""
+        tags = ["github-linkedin-agent", f"model:{self.settings.EURI_MODEL}"]
+        if extra_tags:
+            tags.extend(extra_tags)
+
+        return {
+            "run_name": run_name,
+            "tags": tags,
+            "metadata": {
+                "euri_model": self.settings.EURI_MODEL,
+                "min_github_stars": self.settings.MIN_GITHUB_STARS,
+                "project": self.settings.effective_langsmith_project,
+            },
+        }
 
     def _build_graph(self) -> StateGraph:
         """Construct the LangGraph StateGraph with nodes and conditional edges."""

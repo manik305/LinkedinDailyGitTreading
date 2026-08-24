@@ -1,12 +1,30 @@
-"""LLM Post Generation service using EURI OpenAI-compatible API with human-first prompts."""
+"""LLM Post Generation service using EURI OpenAI-compatible API with LangSmith observability."""
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Callable, Dict, Optional
 from openai import OpenAI
 
-from src.config import Settings
+from src.config import Settings, setup_langsmith_tracing
 
 logger = logging.getLogger(__name__)
+
+# Optional LangSmith imports with graceful no-op fallbacks
+try:
+    from langsmith import traceable
+    from langsmith.wrappers import wrap_openai
+    LANGSMITH_AVAILABLE = True
+except ImportError:
+    LANGSMITH_AVAILABLE = False
+
+    def traceable(*args: Any, **kwargs: Any) -> Callable[[Any], Any]:
+        """No-op traceable decorator fallback when langsmith is not installed."""
+        def decorator(func: Callable[[Any], Any]) -> Callable[[Any], Any]:
+            return func
+        return decorator
+
+    def wrap_openai(client: Any) -> Any:
+        """No-op OpenAI client wrapper fallback."""
+        return client
 
 
 SYSTEM_PROMPT = """You are a senior software architect and open-source practitioner writing an authentic, insightful LinkedIn post.
@@ -30,15 +48,32 @@ STRICT WRITING RULES & GUARDRAILS:
 
 
 class LLMPostGenerator:
-    """Generates authentic LinkedIn posts using the EURI inference endpoint."""
+    """Generates authentic LinkedIn posts using the EURI inference endpoint with LangSmith tracing."""
 
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.client = OpenAI(
+        setup_langsmith_tracing(settings)
+
+        base_client = OpenAI(
             api_key=settings.EURI_API_KEY,
             base_url=settings.EURI_BASE_URL,
         )
 
+        if settings.is_langsmith_enabled and LANGSMITH_AVAILABLE:
+            try:
+                self.client = wrap_openai(base_client)
+                logger.info("LangSmith OpenAI wrapper successfully attached to EURI client.")
+            except Exception as wrap_err:
+                logger.warning("Could not wrap OpenAI client with LangSmith: %s", wrap_err)
+                self.client = base_client
+        else:
+            self.client = base_client
+
+    @traceable(
+        name="generate_spotlight_post",
+        run_type="chain",
+        tags=["euri-llm", "linkedin-post-generator"],
+    )
     def generate_spotlight_post(
         self,
         repo_metadata: Dict[str, Any],
@@ -46,10 +81,11 @@ class LLMPostGenerator:
         regeneration_feedback: Optional[str] = None,
     ) -> str:
         """Synthesize a human-like LinkedIn post from repository context."""
+        repo_name = repo_metadata.get("full_name", "Unknown")
         topics_str = ", ".join(repo_metadata.get("topics", [])) or "None listed"
         user_prompt = f"""Write a compelling, human-crafted LinkedIn spotlight post for the following open-source project:
 
-Repository Name: {repo_metadata.get('full_name')}
+Repository Name: {repo_name}
 Stars: {repo_metadata.get('stargazers_count', 'N/A'):,}
 Primary Language: {repo_metadata.get('language', 'General')}
 Topics: {topics_str}
@@ -64,7 +100,7 @@ README Context:
             user_prompt += f"\n\nAdjustments requested for this regeneration: {regeneration_feedback}"
 
         try:
-            logger.info("Calling EURI API with model: %s", self.settings.EURI_MODEL)
+            logger.info("Calling EURI API with model: %s for repo: %s", self.settings.EURI_MODEL, repo_name)
             response = self.client.chat.completions.create(
                 model=self.settings.EURI_MODEL,
                 messages=[
@@ -77,10 +113,15 @@ README Context:
             post_text = response.choices[0].message.content.strip()
             return post_text
         except Exception as exc:
-            logger.error("Error generating post via EURI LLM: %s", exc)
+            logger.error("Error generating post via EURI LLM for %s: %s", repo_name, exc)
             # Fallback human-formatted post if API key is not yet set or unreachable
             return self._build_fallback_post(repo_metadata)
 
+    @traceable(
+        name="fallback_post_generator",
+        run_type="parser",
+        tags=["fallback-template"],
+    )
     def _build_fallback_post(self, repo: Dict[str, Any]) -> str:
         """Create a structured draft in case of LLM connectivity failure."""
         name = repo.get("name", "the project")

@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel
 
-from src.config import get_settings
+from src.config import get_settings, setup_langsmith_tracing
 from src.db import Database
 from src.agent_graph import SpotlightWorkflow
 from src.telegram_bot import TelegramHITLBot
@@ -22,6 +22,8 @@ app = FastAPI(
 )
 
 settings = get_settings()
+setup_langsmith_tracing(settings)
+
 db = Database(settings.DATABASE_PATH)
 workflow = SpotlightWorkflow(settings)
 telegram_bot = TelegramHITLBot(settings)
@@ -38,13 +40,18 @@ class TriggerResponse(BaseModel):
 
 @app.get("/health", tags=["System"])
 async def health_check() -> Dict[str, Any]:
-    """Check API and database health."""
+    """Check API and database health including LangSmith observability status."""
     has_posted = db.has_posted_today()
     return {
         "status": "healthy",
         "has_posted_today": has_posted,
         "database": settings.DATABASE_PATH,
         "euri_model": settings.EURI_MODEL,
+        "langsmith_tracing": {
+            "enabled": settings.is_langsmith_enabled,
+            "project": settings.effective_langsmith_project,
+            "endpoint": settings.effective_langsmith_endpoint,
+        },
     }
 
 
@@ -81,7 +88,8 @@ async def run_daily_pipeline() -> TriggerResponse:
     }
 
     try:
-        final_state = await workflow.graph.ainvoke(initial_state)
+        config = workflow.get_execution_config(run_name="spotlight_api_daily_run")
+        final_state = await workflow.graph.ainvoke(initial_state, config=config)
         selected_repo = (
             final_state.get("selected_repo", {}).get("full_name")
             if final_state.get("selected_repo")

@@ -12,6 +12,7 @@ An autonomous, production-grade agent built with **FastAPI**, **LangGraph**, and
 - **🎯 Parameter Calibrated**: Configured with `max_tokens: 1500` (no truncated posts) and `temperature: 0.55` (creative natural phrasing strictly grounded in README facts).
 - **📅 Strict 1-Post-Per-Day Cadence**: Guaranteed single daily post enforced at both scheduler and SQLite database query levels.
 - **📱 Telegram Human-in-the-Loop (HITL)**: Instant mobile previews with interactive inline buttons: `[ ✅ Accept & Post ]`, `[ 🔄 Regenerate ]`, `[ ❌ Skip Repo ]`.
+- **📈 LangSmith Real-Time Tracing**: Native LangGraph and OpenAI client wrapping (`langsmith.wrappers.wrap_openai` & `@traceable`) for live tracing of every LLM call, prompt, token usage, latency, tool call, and graph transition.
 - **🌐 FastAPI Backend Server**: Full REST API and webhook receiver (`/health`, `/api/v1/run-daily-pipeline`, `/api/v1/telegram-webhook`, `/api/v1/history`).
 - **💾 SQLite Persistence**: Version-controlled local database tracking posted repositories, timestamps, and LinkedIn post URNs.
 
@@ -33,6 +34,7 @@ An autonomous, production-grade agent built with **FastAPI**, **LangGraph**, and
                     │
                     ▼
           [ EURI LLM Synthesis ] (gpt-4.1-mini / gpt-4o | 1500 tokens | 0.55 temp)
+          [ 🔍 LangSmith Live Traces: Prompts, Tokens, Latency & Spans ]
                     │
                     ▼
           [ Telegram HITL Dispatch ] ◄────────────────┐ (🔄 Regenerate)
@@ -69,6 +71,12 @@ EURI_BASE_URL=https://api.euron.one/api/v1/euri
 EURI_MODEL=gpt-4.1-mini
 EURI_MAX_TOKENS=1500
 EURI_TEMPERATURE=0.55
+
+# LangSmith Real-Time Observability & Tracing
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=lsv2_pt_...your_langsmith_api_key_here...
+LANGSMITH_PROJECT=github-linkedin-spotlight
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
 
 # Optional: GitHub Personal Access Token for higher rate limits
 GITHUB_TOKEN=

@@ -56,6 +56,7 @@ graph TD
 | **LLM Inference Gateway** | **EURI Endpoint (`https://api.euron.one/api/v1/euri`)** | OpenAI SDK compatibility with high-performance models (`gpt-4.1-mini`, `gpt-4o`, `gpt-4o-mini`, `claude-3-5-sonnet`, `deepseek-chat`). |
 | **Inference Calibration** | **`max_tokens: 1500`, `temperature: 0.55`** | Avoids truncation, balances natural human conversational tone, and anchors strictly to facts. |
 | **Cadence / Scheduling** | **Daily Schedule (1 Post / Day)** | Prevents spam; enforced at both trigger and database query layers. |
+| **Observability & Tracing** | **LangSmith (`LANGSMITH_TRACING` & `LANGSMITH_API_KEY`)** | Real-time monitoring of LLM calls, prompts, tokens, latencies, HITL graph transitions, and spans. |
 | **Persistence / Storage** | **SQLite 3 (`data/history.db`)** | Lightweight, zero-config relational database with daily quota indexing and full history tracking. |
 | **Human Review UI** | **Telegram Bot API (Inline Keyboards & Webhooks)** | Mobile-first, zero-latency notification and one-click approval interface. |
 | **Target Distribution** | **LinkedIn Community Management REST API** | Official API for publishing technical commentary and post updates. |

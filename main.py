@@ -27,6 +27,14 @@ async def run_cli_pipeline() -> None:
     logger.info("Initializing Daily Spotlight Pipeline...")
     logger.info("Configured EURI Model: %s", settings.EURI_MODEL)
     logger.info("Max Tokens: %d | Temperature: %.2f", settings.EURI_MAX_TOKENS, settings.EURI_TEMPERATURE)
+    if settings.is_langsmith_enabled:
+        logger.info(
+            "LangSmith Tracing: ENABLED (Project: %s, Endpoint: %s)",
+            settings.effective_langsmith_project,
+            settings.effective_langsmith_endpoint,
+        )
+    else:
+        logger.info("LangSmith Tracing: DISABLED (Set LANGSMITH_API_KEY to activate)")
 
     if db.has_posted_today():
         logger.info("🛑 Daily limit enforced: A spotlight post has already been published today.")
@@ -46,7 +54,8 @@ async def run_cli_pipeline() -> None:
         "error_message": None,
     }
 
-    final_state = await workflow.graph.ainvoke(initial_state)
+    config = workflow.get_execution_config(run_name="spotlight_cli_daily_run")
+    final_state = await workflow.graph.ainvoke(initial_state, config=config)
 
     status = final_state.get("approval_status")
     selected_repo = final_state.get("selected_repo", {}).get("full_name") if final_state.get("selected_repo") else None
