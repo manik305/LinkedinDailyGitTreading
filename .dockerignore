@@ -1,0 +1,33 @@
+# Git & GitHub
+.git
+.gitignore
+.github
+
+# Python bytecode & environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Agent & IDE Configurations
+.agent/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local environment & secrets (Pass via docker-compose or CLI env)
+.env
+.env.*
+!.env.example
+
+# Testing & Artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+*.log

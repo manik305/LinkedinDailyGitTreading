@@ -92,7 +92,39 @@ LINKEDIN_PERSON_URN=urn:li:person:abcdef123
 
 ---
 
-## 🚀 Running the Application
+## 🐳 Docker & Docker Compose Setup
+
+Run the entire application in isolated, reproducible Docker containers with automated healthchecks and persistent storage.
+
+### 1. Build and Start the FastAPI Web Service
+Starts the API service on `http://localhost:8000` with the SQLite database stored on the host (`./data`):
+```bash
+docker compose up -d --build
+```
+
+- **Healthcheck & Status**:
+  ```bash
+  docker compose ps
+  curl http://localhost:8000/health
+  ```
+- **Stream Logs**:
+  ```bash
+  docker compose logs -f spotlight-api
+  ```
+- **Stop Service**:
+  ```bash
+  docker compose down
+  ```
+
+### 2. Execute a Single Daily Spotlight Run (CLI / Dispatch)
+To run a one-shot execution (fetching trending repos, generating draft via EURI, dispatching Telegram HITL, updating SQLite database):
+```bash
+docker compose run --rm spotlight-cli
+```
+
+---
+
+## 🚀 Running the Application (Locally / Without Docker)
 
 ### Mode A: FastAPI Server Mode (Recommended for Webhooks & Live Services)
 ```powershell

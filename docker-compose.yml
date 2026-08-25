@@ -1,0 +1,46 @@
+services:
+  # ----------------------------------------------------------------------------
+  # Continuous FastAPI Web Service & Telegram Webhook Receiver
+  # ----------------------------------------------------------------------------
+  spotlight-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spotlight-api
+    restart: unless-stopped
+    ports:
+      - "${SERVER_PORT:-8000}:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DATABASE_PATH=data/history.db
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8000
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # ----------------------------------------------------------------------------
+  # One-Shot Headless Spotlight Pipeline Runner (CLI / Dispatch)
+  # ----------------------------------------------------------------------------
+  spotlight-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spotlight-cli
+    profiles:
+      - cli
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      - DATABASE_PATH=data/history.db
+    volumes:
+      - ./data:/app/data
+    command: ["python", "main.py", "run"]
