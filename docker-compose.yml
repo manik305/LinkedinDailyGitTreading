@@ -19,6 +19,8 @@ services:
       - SERVER_PORT=8000
     volumes:
       - ./data:/app/data
+      - ./src:/app/src
+      - ./main.py:/app/main.py
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -43,4 +45,6 @@ services:
       - DATABASE_PATH=data/history.db
     volumes:
       - ./data:/app/data
+      - ./src:/app/src
+      - ./main.py:/app/main.py
     command: ["python", "main.py", "run"]

@@ -48,6 +48,11 @@ jobs:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
           LINKEDIN_PERSON_URN: ${{ secrets.LINKEDIN_PERSON_URN }}
           DATABASE_PATH: data/history.db
+          FORCE_RUN: ${{ inputs.force_run || 'false' }}
+          LANGSMITH_TRACING: ${{ secrets.LANGSMITH_TRACING || secrets.LANGCHAIN_TRACING_V2 || 'true' }}
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY || secrets.LANGCHAIN_API_KEY }}
+          LANGSMITH_PROJECT: ${{ secrets.LANGSMITH_PROJECT || secrets.LANGCHAIN_PROJECT || 'github-linkedin-spotlight' }}
+          LANGSMITH_ENDPOINT: ${{ secrets.LANGSMITH_ENDPOINT || secrets.LANGCHAIN_ENDPOINT || 'https://api.smith.langchain.com' }}
         run: |
           python main.py run
 

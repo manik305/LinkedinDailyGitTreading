@@ -27,23 +27,27 @@ except ImportError:
         return client
 
 
-SYSTEM_PROMPT = """You are a senior software architect and open-source practitioner writing an authentic, insightful LinkedIn post.
+SYSTEM_PROMPT = """You are a seasoned Principal Software Architect and open-source evangelist writing an in-depth, authentic LinkedIn technical breakdown.
 
-Your goal is to spotlight a remarkable open-source project so that it reads 100% like a genuine, thoughtful post written by a real human engineer—NOT an AI-generated template.
+Your goal is to spotlight a remarkable open-source project in a deeply thoughtful, human practitioner's voice. The post must provide immediate architectural clarity, explain the developer pain point it solves, and illustrate how engineering teams can directly benefit from adopting it.
 
-STRICT WRITING RULES & GUARDRAILS:
-1. ZERO AI CLICHÉS: Never use words or phrases like "In the fast-paced world", "Game-changer", "Delve", "Tapestry", "Unleash", "Dive into", "Supercharge", "Look no further", "Revolutionize".
-2. PRACTITIONER FIRST-PERSON VOICE: Write naturally from experience (e.g., "I've been looking into how...", "What caught my eye in their architecture is...", "If you've ever dealt with X, this makes total sense").
-3. CONCRETE ARCHITECTURAL VALUE: Focus on engineering trade-offs, performance gains, memory efficiency, design patterns, and why this project solves a real pain point.
-4. ZERO HALLUCINATION: Only state facts, benchmarks, and features explicitly present in the provided README and repository metadata. Do not invent features.
-5. CLEAN MOBILE-FRIENDLY FORMATTING:
-   - High-impact, engaging hook (1-2 lines)
-   - The friction/problem engineers face (2-3 lines)
-   - Bullet points for core architectural highlights & capabilities
-   - Technical stack / runtime summary
-   - Thoughtful, genuine question to spark comments among engineers
-   - Mention: "🔗 Dropping the GitHub link in the first comment 👇"
-   - 4-5 relevant hashtags (e.g., #SoftwareEngineering #OpenSource #DevCommunity #SystemDesign)
+STRICT WRITING RULES & TONE GUARDRAILS:
+1. ZERO AI CLICHÉS: Strictly forbid phrases like "In the fast-paced world", "Game-changer", "Delve into", "Tapestry", "Unleash", "Dive deep", "Supercharge", "Look no further", "Revolutionize", "In today's landscape".
+2. PRACTITIONER FIRST-PERSON PERSPECTIVE: Write naturally as an engineer who evaluated the codebase and architecture (e.g., "I've been analyzing how...", "What caught my eye in their architecture is...", "If your team has ever struggled with X, this makes total sense").
+3. CONCRETE DEVELOPER VALUE & ARCHITECTURAL SUBSTANCE:
+   - Clearly articulate the friction/pain point developers face without this tool.
+   - Explain the architectural mechanism (e.g., zero-copy parsing, AST transformations, declarative configs, concurrency models).
+   - Detail how this directly saves time, improves reliability, or reduces complexity for individual devs and teams.
+4. ZERO HALLUCINATION: All technical claims, benchmark numbers, features, and stack details must be grounded strictly in the provided README and repository metadata.
+5. STRUCTURED, HIGH-READABILITY FORMAT:
+   - 🎯 Engaging Hook (1-2 lines identifying the problem space)
+   - ⚠️ The Core Engineering Friction (Why existing setups are painful or fragile)
+   - 💡 How [Project Name] Solves It & Directly Helps Developers (Detailed breakdown of capabilities, architectural highlights, and team impact)
+   - 🛠️ Under the Hood (Tech stack, runtime characteristics, key integrations)
+   - 📌 When to Reach for It (Ideal team scenarios or production workflows)
+   - 💬 Thoughtful Discussion Prompt (Specific technical question for the community)
+   - 🔗 "Dropping the GitHub repo link in the first comment 👇"
+   - 🏷️ 4-5 relevant hashtags (e.g., #SoftwareEngineering #OpenSource #DevOps #SystemDesign)
 """
 
 
@@ -80,24 +84,30 @@ class LLMPostGenerator:
         readme_content: str,
         regeneration_feedback: Optional[str] = None,
     ) -> str:
-        """Synthesize a human-like LinkedIn post from repository context."""
+        """Synthesize an authentic, comprehensive LinkedIn technical post from repository context."""
         repo_name = repo_metadata.get("full_name", "Unknown")
         topics_str = ", ".join(repo_metadata.get("topics", [])) or "None listed"
-        user_prompt = f"""Write a compelling, human-crafted LinkedIn spotlight post for the following open-source project:
+        user_prompt = f"""Craft an insightful, comprehensive LinkedIn spotlight breakdown for the following open-source project:
 
-Repository Name: {repo_name}
-Stars: {repo_metadata.get('stargazers_count', 'N/A'):,}
+Repository: {repo_name}
+Stars: {repo_metadata.get('stargazers_count', 'N/A'):,} | Forks: {repo_metadata.get('forks_count', 'N/A'):,}
 Primary Language: {repo_metadata.get('language', 'General')}
 Topics: {topics_str}
-Short Description: {repo_metadata.get('description', '')}
+Description: {repo_metadata.get('description', '')}
 
-README Context:
+README Documentation:
 \"\"\"
 {readme_content}
 \"\"\"
+
+Focus on:
+1. What friction or bottleneck engineers face in this problem domain.
+2. The specific architectural solution and mechanism this project provides.
+3. Concrete ways it helps individual developers and teams streamline workflows.
+4. Stack summary and practical adoption guidance.
 """
         if regeneration_feedback:
-            user_prompt += f"\n\nAdjustments requested for this regeneration: {regeneration_feedback}"
+            user_prompt += f"\n\nAdditional adjustments requested: {regeneration_feedback}"
 
         try:
             logger.info("Calling EURI API with model: %s for repo: %s", self.settings.EURI_MODEL, repo_name)
@@ -123,23 +133,29 @@ README Context:
         tags=["fallback-template"],
     )
     def _build_fallback_post(self, repo: Dict[str, Any]) -> str:
-        """Create a structured draft in case of LLM connectivity failure."""
+        """Create an in-depth structured draft in case of LLM connectivity failure."""
         name = repo.get("name", "the project")
         full_name = repo.get("full_name", "")
-        desc = repo.get("description", "A powerful modern developer tool.")
+        desc = repo.get("description", "A powerful modern developer tool designed for scale.")
         lang = repo.get("language", "Software")
         stars = repo.get("stargazers_count", 0)
+        topics = repo.get("topics", [])
+        topic_preview = ", ".join(topics[:3]) if topics else lang
 
         return (
-            f"I've been looking into how {name} approaches modern {lang} workflows—and their architecture is worth checking out.\n\n"
-            f"Problem it solves:\n"
-            f"{desc}\n\n"
-            f"Why it stands out:\n"
-            f"• Crosses over {stars:,} GitHub stars with active community adoption\n"
-            f"• Purpose-built for developer velocity and minimal runtime overhead\n"
-            f"• Clean modular codebase with transparent configuration\n\n"
-            f"Under the hood: Built primarily in {lang}.\n\n"
-            f"Has anyone here experimented with {name} in production yet? What has your experience been?\n\n"
+            f"I've been analyzing how {name} tackles modern {lang} development—and its architectural design solves a very real friction point for engineering teams.\n\n"
+            f"The Friction Most Teams Face:\n"
+            f"As applications scale, managing {topic_preview} workflows often leads to brittle pipelines, excessive boilerplate, and slow feedback loops during local iteration.\n\n"
+            f"How {name} Directly Helps Developers & Teams:\n"
+            f"• Purpose-Built Efficiency: {desc}\n"
+            f"• Streamlined DX: Provides intuitive abstractions that remove tedious configuration and cut down cycle time\n"
+            f"• Production Resilience: Proven adoption across {stars:,}+ GitHub stars with active community maintenance\n"
+            f"• Modular Architecture: Designed to drop into existing CI/CD and production stacks with minimal friction\n\n"
+            f"Under the Hood:\n"
+            f"Engineered primarily in {lang} with lightweight dependencies and transparent configuration.\n\n"
+            f"When to Reach for It:\n"
+            f"If your team is looking to standardize {topic_preview} workflows without taking on heavyweight operational complexity, {name} is well worth evaluating.\n\n"
+            f"Have you evaluated or deployed {name} in your organization? What was your biggest takeaway from its architecture?\n\n"
             f"🔗 Dropping the GitHub repo link in the first comment 👇\n"
-            f"#SoftwareEngineering #OpenSource #DevCommunity #{lang.replace(' ', '')}"
+            f"#SoftwareEngineering #OpenSource #DevCommunity #{lang.replace(' ', '')} #Architecture"
         )

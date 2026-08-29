@@ -66,9 +66,9 @@ async def daily_status() -> Dict[str, Any]:
 
 
 @app.post("/api/v1/run-daily-pipeline", response_model=TriggerResponse, tags=["Workflow"])
-async def run_daily_pipeline() -> TriggerResponse:
+async def run_daily_pipeline(force: bool = False) -> TriggerResponse:
     """Execute the daily spotlight discovery, EURI generation, and Telegram HITL dispatch."""
-    if db.has_posted_today():
+    if db.has_posted_today() and not force:
         return TriggerResponse(
             status="SKIPPED",
             message="1-post-per-day limit reached: A spotlight post has already been published today.",
@@ -85,6 +85,7 @@ async def run_daily_pipeline() -> TriggerResponse:
         "approval_status": None,
         "linkedin_post_urn": None,
         "error_message": None,
+        "force_run": force,
     }
 
     try:

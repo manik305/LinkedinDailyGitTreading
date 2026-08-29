@@ -25,6 +25,7 @@ class AgentState(TypedDict):
     approval_status: Optional[str]  # 'PENDING', 'APPROVED', 'REJECTED', 'REGENERATE', 'QUOTA_REACHED'
     linkedin_post_urn: Optional[str]
     error_message: Optional[str]
+    force_run: Optional[bool]
 
 
 class SpotlightWorkflow:
@@ -123,8 +124,9 @@ class SpotlightWorkflow:
 
     async def filter_and_validate_node(self, state: AgentState) -> Dict[str, Any]:
         """Node 2: Apply 1-post-per-day guard and deduplication against SQLite."""
+        force_run = bool(state.get("force_run", False))
         # 1. Enforce strict 1-post-per-day limit
-        if self.db.has_posted_today():
+        if self.db.has_posted_today() and not force_run:
             logger.info("Daily quota reached: A spotlight post has already been published today.")
             return {
                 "approval_status": "QUOTA_REACHED",

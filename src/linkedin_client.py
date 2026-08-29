@@ -15,7 +15,11 @@ class LinkedInClient:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.access_token = settings.LINKEDIN_ACCESS_TOKEN
-        self.author_urn = settings.LINKEDIN_PERSON_URN
+        raw_urn = (settings.LINKEDIN_PERSON_URN or "").strip()
+        if raw_urn and not raw_urn.startswith("urn:li:"):
+            self.author_urn = f"urn:li:person:{raw_urn}"
+        else:
+            self.author_urn = raw_urn
 
     async def publish_post(self, post_text: str) -> Optional[str]:
         """Publish text post to LinkedIn Community Management API and return post URN."""

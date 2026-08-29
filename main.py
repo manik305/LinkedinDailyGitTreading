@@ -8,6 +8,14 @@ import asyncio
 import logging
 import uvicorn
 
+# Ensure UTF-8 output encoding on Windows consoles
+if sys.platform == "win32" and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 from src.config import get_settings
 from src.agent_graph import SpotlightWorkflow
 from src.db import Database
@@ -21,10 +29,17 @@ logger = logging.getLogger("main")
 
 async def run_cli_pipeline() -> None:
     """Execute the daily spotlight workflow in CLI / GitHub Actions headless mode."""
+    import os
     settings = get_settings()
     db = Database(settings.DATABASE_PATH)
 
-    logger.info("Initializing Daily Spotlight Pipeline...")
+    force_run = (
+        "--force" in sys.argv
+        or "-f" in sys.argv
+        or os.getenv("FORCE_RUN", "").strip().lower() in ("true", "1", "yes")
+    )
+
+    logger.info("Initializing Daily Spotlight Pipeline (force_run=%s)...", force_run)
     logger.info("Configured EURI Model: %s", settings.EURI_MODEL)
     logger.info("Max Tokens: %d | Temperature: %.2f", settings.EURI_MAX_TOKENS, settings.EURI_TEMPERATURE)
     if settings.is_langsmith_enabled:
@@ -36,9 +51,9 @@ async def run_cli_pipeline() -> None:
     else:
         logger.info("LangSmith Tracing: DISABLED (Set LANGSMITH_API_KEY to activate)")
 
-    if db.has_posted_today():
+    if db.has_posted_today() and not force_run:
         logger.info("🛑 Daily limit enforced: A spotlight post has already been published today.")
-        print("Daily quota met (1 post per day). Exiting.")
+        print("Daily quota met (1 post per day). Use '--force' or FORCE_RUN=true to bypass.")
         return
 
     workflow = SpotlightWorkflow(settings)
@@ -52,6 +67,7 @@ async def run_cli_pipeline() -> None:
         "approval_status": None,
         "linkedin_post_urn": None,
         "error_message": None,
+        "force_run": force_run,
     }
 
     config = workflow.get_execution_config(run_name="spotlight_cli_daily_run")
